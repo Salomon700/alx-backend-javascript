@@ -1,49 +1,45 @@
+/**
+ * Function that reads a file and prints the content: Asynchronous version
+ * @param {string} path - Path of the file
+ * @returns {Promise} - Promise object represents the content of the file
+ */
+
 const fs = require('fs');
 
-/**
- * Counts the students in a CSV data file.
- * @param {String} dataPath The path to the CSV data file.
- * @author Bezaleel Olakunori <https://github.com/B3zaleel>
- */
-const countStudents = (dataPath) => new Promise((resolve, reject) => {
-  fs.readFile(dataPath, 'utf-8', (err, data) => {
-    if (err) {
-      reject(new Error('Cannot load the database'));
-    }
-    if (data) {
-      const fileLines = data
-        .toString('utf-8')
-        .trim()
-        .split('\n');
-      const studentGroups = {};
-      const dbFieldNames = fileLines[0].split(',');
-      const studentPropNames = dbFieldNames
-        .slice(0, dbFieldNames.length - 1);
+module.exports = function countStudents(path) {
+  return new Promise((resolve, reject) => {
+    fs.readFile(path, { encoding: 'utf-8' }, (err, data) => {
+      if (err) return reject(Error('Cannot load the database'));
+      const lines = data.split('\n').slice(1, -1);
 
-      for (const line of fileLines.slice(1)) {
-        const studentRecord = line.split(',');
-        const studentPropValues = studentRecord
-          .slice(0, studentRecord.length - 1);
-        const field = studentRecord[studentRecord.length - 1];
-        if (!Object.keys(studentGroups).includes(field)) {
-          studentGroups[field] = [];
+      const header = data.split('\n').slice(0, 1)[0].split(',');
+
+      const firstnameIndex = header.findIndex((ele) => ele === 'firstname');
+      const fieldIndex = header.findIndex((ele) => ele === 'field');
+
+      const fields = {};
+      const students = {};
+
+      lines.forEach((line) => {
+        const list = line.split(',');
+        if (!fields[list[fieldIndex]]) fields[list[fieldIndex]] = 0;
+        fields[list[fieldIndex]] += 1;
+        if (!students[list[fieldIndex]]) students[list[fieldIndex]] = '';
+        students[list[fieldIndex]] += students[list[fieldIndex]]
+          ? `, ${list[firstnameIndex]}`
+          : list[firstnameIndex];
+      });
+
+      console.log(`Number of students: ${lines.length}`);
+      for (const key in fields) {
+        if (Object.hasOwnProperty.call(fields, key)) {
+          const element = fields[key];
+          console.log(
+            `Number of students in ${key}: ${element}. List: ${students[key]}`,
+          );
         }
-        const studentEntries = studentPropNames
-          .map((propName, idx) => [propName, studentPropValues[idx]]);
-        studentGroups[field].push(Object.fromEntries(studentEntries));
       }
-
-      const totalStudents = Object
-        .values(studentGroups)
-        .reduce((pre, cur) => (pre || []).length + cur.length);
-      console.log(`Number of students: ${totalStudents}`);
-      for (const [field, group] of Object.entries(studentGroups)) {
-        const studentNames = group.map((student) => student.firstname).join(', ');
-        console.log(`Number of students in ${field}: ${group.length}. List: ${studentNames}`);
-      }
-      resolve(true);
-    }
+      return resolve();
+    });
   });
-});
-
-module.exports = countStudents;
+};
